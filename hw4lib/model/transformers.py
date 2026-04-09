@@ -167,7 +167,7 @@ class DecoderOnlyTransformer(nn.Module):
             if self.training and self.layer_drop_rate > 0 and random.random() < self.layer_drop_rate:
                 continue
             
-            x, attention = self.dec_layers[i].forward(x, pad_mask_dec, causal_mask)
+            x, attention = self.dec_layers[i](x, pad_mask_dec, causal_mask)
             runnint_att['layer{}_dec_self'.format(i + 1)] = attention
 
         # TODO: Final normalization and projection for next character prediction
