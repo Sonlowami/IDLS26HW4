@@ -44,9 +44,6 @@ class SelfAttentionLayer(nn.Module):
         self.norm = torch.nn.LayerNorm(d_model)
         self.dropout = torch.nn.Dropout(dropout)
 
-    def __call__(self, x: torch.Tensor, key_padding_mask: Optional[torch.Tensor] = None, attn_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
-        return self.forward(x, key_padding_mask, attn_mask)
-
     def forward(self, x: torch.Tensor, key_padding_mask: Optional[torch.Tensor] = None, attn_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         '''
         Forward pass for the SelfAttentionLayer.
