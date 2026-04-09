@@ -66,8 +66,8 @@ class SelfAttentionDecoderLayer(nn.Module):
             x (torch.Tensor): The output tensor. shape: (batch_size, seq_len, num_classes)
             mha_attn_weights (torch.Tensor): The attention weights  . shape: (batch_size, seq_len, seq_len)   
         '''
-        x, attn_weights = self.self_attn.forward(x, key_padding_mask, attn_mask)
-        return self.ffn.forward(x), attn_weights
+        x, attn_weights = self.self_attn(x, key_padding_mask, attn_mask)
+        return self.ffn(x), attn_weights
 
 ## -------------------------------------------------------------------------------------------------    
 class CrossAttentionDecoderLayer(nn.Module):
