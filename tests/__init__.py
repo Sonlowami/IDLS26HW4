@@ -1,0 +1,16 @@
+"""Test package bootstrap.
+
+Ensures the project root is on ``sys.path`` so imports like ``import hw4lib``
+work when tests are launched from different working directories.
+"""
+
+from pathlib import Path
+import sys
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+project_root_str = str(PROJECT_ROOT)
+
+if project_root_str not in sys.path:
+    sys.path.insert(0, project_root_str)
+
