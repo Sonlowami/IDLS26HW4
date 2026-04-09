@@ -40,7 +40,7 @@ class SelfAttentionLayer(nn.Module):
             dropout (float): The dropout rate.
         '''
         super().__init__()
-        self.mha = torch.nn.MultiHeadAttention(d_model, num_heads, batch_first=True)
+        self.mha = nn.MultiheadAttention(d_model, num_heads, batch_first=True)
         self.norm = torch.nn.LayerNorm(d_model)
         self.dropout = torch.nn.Dropout(dropout)
 
@@ -57,8 +57,11 @@ class SelfAttentionLayer(nn.Module):
             x (torch.Tensor): Output tensor, shape (batch_size, seq_len, d_model)
             mha_attn_weights (torch.Tensor): Attention weights, shape (batch_size, seq_len, seq_len)   
         '''
+        residual = x
+        x = self.norm(x)
         x, mha_attn_weights = self.mha(x, x, x, attn_mask=attn_mask, key_padding_mask=key_padding_mask)
-        return self.dropout(self.norm(x)), mha_attn_weights
+        x += residual
+        return self.dropout(x), mha_attn_weights
     
 ## -------------------------------------------------------------------------------------------------  
 class CrossAttentionLayer(nn.Module):

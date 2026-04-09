@@ -3,6 +3,7 @@ import os
 import numpy as np
 from tqdm import tqdm
 import torch
+import torch.nn as nn
 from torch.utils.data import Dataset 
 from torch.nn.utils.rnn import pad_sequence
 from .tokenizer import H4Tokenizer
@@ -61,14 +62,25 @@ class LMDataset(Dataset):
 
         # Set up data paths 
         # TODO: Join root and partition to get the text directory
-        root = "../../hw4_data_subset/hw4p1_data"
+        root = config['root']
         self.text_dir = os.path.join(root, partition)
 
         # TODO: Get all text files in the text directory in sorted order  
         self.text_files = sorted(os.listdir(self.text_dir))
 
         # TODO: Take subset
-        subset_size = config['subset']
+        subset = config['subset']
+        total_files = len(self.text_files)
+
+        if isinstance(subset, float):
+            if not (0 < subset <= 1.0):
+                raise ValueError("subset as float must be in (0, 1]")
+            subset_size = max(1, int(total_files * subset))
+        else:
+            subset_size = int(subset)
+        if subset_size < 1:
+            raise ValueError("subset must be >= 1 when given as an integer")
+        subset_size = min(subset_size, total_files)
         self.text_files = self.text_files[:subset_size]
 
         # Initialize lists to store transcripts
@@ -84,8 +96,11 @@ class LMDataset(Dataset):
         print(f"Loading transcripts for {partition} partition...")
         for file in tqdm(self.text_files):
             # TODO: Load the transcript
-            transcript = np.load(file)
-            
+            transcript = np.load(os.path.join(self.text_dir, file), allow_pickle=True)
+            if isinstance(transcript, np.ndarray) and transcript.shape == ():
+                transcript = str(transcript.item())
+            else:
+                transcript = str(transcript)
             # Track character count (before tokenization)
             # DO NOT MODIFY
             self.total_chars += len(transcript)
@@ -103,7 +118,7 @@ class LMDataset(Dataset):
             
             # TODO: Create shifted and golden versions by adding sos and eos tokens
             shifted = np.insert(tokenized, 0, self.sos_token)
-            golden = np.insert(tokenized, -1, self.eos_token)
+            golden = np.insert(tokenized, len(tokenized), self.eos_token)
             self.transcripts_shifted.append(shifted)
             self.transcripts_golden.append(golden)
 
@@ -173,11 +188,11 @@ class LMDataset(Dataset):
 
         # TODO: Pad sequences
 
-        padded_shifted = torch.nn.utils.rnn.pad_sequence(shifted_transcripts, batch_first=True, padding_value=self.pad_token) # (B, T)
-        padded_golden  = torch.nn.utils.rnn.pad_sequence(golden_transcripts, batch_first=True, padding_value = self.pad_token) # (B, T)
+        padded_shifted = pad_sequence(shifted_transcripts, batch_first=True, padding_value=self.pad_token) # (B, T)
+        padded_golden  = pad_sequence(golden_transcripts, batch_first=True, padding_value = self.pad_token) # (B, T)
 
         # TODO: Return the padded shifted, padded golden, and lengths
-        return padded_shifted, padded_golden. lengths
+        return padded_shifted, padded_golden, torch.tensor(lengths, dtype=torch.long)
 
     def sample_prompts(self, num_samples: int, prompt_length: int, seed: int = None) -> Tuple[torch.LongTensor, List[torch.LongTensor]]:
         """
@@ -217,11 +232,11 @@ class LMDataset(Dataset):
                 continue
                 
             # Get exactly prompt_length tokens
-            prompt_tokens = tokens[:prompt_length]
+            prompt_tokens = tokens[:prompt_length].tolist()
             
             # Store prompt and original sequence
             prompts.append(torch.LongTensor([self.sos_token] + prompt_tokens))
-            originals.append(torch.LongTensor(tokens + [self.eos_token]))
+            originals.append(torch.LongTensor(self.transcripts_golden[idx]))
             
             attempts += 1
             

@@ -23,13 +23,13 @@ class PositionalEncoding(nn.Module):
             max_len (int): The maximum length of the input sequence.
         """
         # TODO: Implement create_pe_table
-        pe = torch.ones((max_len, d_model))
-        for t in range(max_len):
-            for i in range(d_model):
-                if i % 2 == 0:
-                    pe[t, i] = torch.sin(t / 10000e(2*i/d_model))
-                else:
-                    pe[t, i] = torch.cos(t / 10000e(2*i/d_model))
+        pe = torch.zeros((max_len, d_model), dtype=torch.float32)
+        position = torch.arange(0, max_len, dtype=torch.float32).unsqueeze(1)
+        div_term = torch.exp(
+            torch.arange(0, d_model, 2, dtype=torch.float32) * (-math.log(10000.0) / d_model)
+        )
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
         # Register as buffer to save with model state
         self.register_buffer('pe', pe.unsqueeze(0))
         
@@ -51,5 +51,5 @@ class PositionalEncoding(nn.Module):
         if seq_len > self.pe.size(1):
             raise ValueError(f"Sequence length {seq_len} exceeds the maximum length {self.pe.size(1)}")
         # Step 3: Add positional encodings to input
-        x = x + self.pe
+        x = x + self.pe[:, :seq_len, :]
         return x
