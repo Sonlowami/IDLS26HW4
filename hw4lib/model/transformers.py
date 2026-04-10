@@ -153,9 +153,11 @@ class DecoderOnlyTransformer(nn.Module):
         pad_mask_dec = None
         if target_lengths is not None:
             pad_mask_dec = PadMask(padded_targets, target_lengths)
+            pad_mask_dec = pad_mask_dec.to(padded_targets.device)
         
         # TODO: Create causal mask to prevent attending to future tokens on the same device as the input (use CausalMask)
         causal_mask = CausalMask(padded_targets)
+        causal_mask = causal_mask.to(padded_targets.device)
 
         # TODO: Apply embedding, positional encoding, and dropout
         x = self.dropout(self.positional_encoding(self.target_embedding(padded_targets)))
