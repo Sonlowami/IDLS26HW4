@@ -5,5 +5,5 @@ from .verify_dataloader import verify_dataloader
 
 __all__ = ['H4Tokenizer', 
            'LMDataset', 
-           #'ASRDataset',
+           'ASRDataset',
            'verify_dataloader']
