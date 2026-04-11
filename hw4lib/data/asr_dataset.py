@@ -183,11 +183,7 @@ class ASRDataset(Dataset):
                 # TODO: Load the transcript
                 # Important Note: This is a very important line of code and you should check whether your transcript is correct after loading (and very dependent in evaluation)
                 text_file = os.path.join(self.text_dir, self.text_files[i])
-                transcript = np.load(text_file, allow_pickle=True)
-                if isinstance(transcript, np.ndarray) and transcript.shape == ():
-                    transcript = str(transcript.item())
-                else:
-                    transcript = str(transcript)
+                transcript = "".join(np.load(text_file, allow_pickle=True).tolist())
 
                 # TODO: Track character count (before tokenization)
                 self.total_chars += len(transcript)

@@ -176,7 +176,7 @@ class SequenceGenerator:
                 break
 
             logits = self.score_fn(x)
-            logits = self._apply_repeat_penalty(logits, x, repeat_penalty + 1e-10)
+            logits = self._apply_repeat_penalty(logits, x, repeat_penalty)
             logits = logits / temperature
             log_probs = torch.log_softmax(logits, dim=-1)
 

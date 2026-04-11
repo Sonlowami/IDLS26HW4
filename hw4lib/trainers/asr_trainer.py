@@ -445,7 +445,6 @@ class ASRTrainer(BaseTrainer):
                         recognition_config['temperature'],
                         recognition_config['repeat_penalty']
                     )
-
                 # Clean up
                 del feats, feat_lengths, encoder_output, pad_mask_src, prompts
                 torch.cuda.empty_cache()
