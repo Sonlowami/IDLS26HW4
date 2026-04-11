@@ -514,8 +514,8 @@ class ASRTrainer(BaseTrainer):
         
         return {
             'greedy': greedy_config,
-            'beam_10': beam_10_config,
-            'beam_20': beam_20_config
+            # 'beam_10': beam_10_config,
+            # 'beam_20': beam_20_config
         }
         
     def _calculate_asr_metrics(self, references: Union[str, List[str]], hypotheses: Union[str, List[str]]) -> Tuple[float, float, float]:
