@@ -139,36 +139,18 @@ class SequenceGenerator:
 
         return logits
 
-    def _get_seq_hash(self, seq: torch.Tensor, batch_idx: int) -> int:
-        """
-        Create a hashable representation of a sequence for a given batch.
-        Args:
-            seq: Sequence tensor of shape (batch_size, seq_len)
-            batch_idx: Index of the batch
-        Returns:
-            Hash of the sequence for the given batch
-        """
-        return hash(seq[batch_idx].detach().cpu().numpy().tobytes())
-
     def generate_greedy(
             self,
             x: torch.Tensor,
             temperature: float = 1.0,
-            repeat_penalty: float = 1.0,
-            use_kv_cache: bool = True
+            repeat_penalty: float = 1.0
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Generate sequences using greedy search with KV-cache optimization.
-        
-        KV-cache optimization avoids redundant computations by caching logits for sequences
-        that have already been evaluated. This is especially effective when multiple sequences
-        share common prefixes or when sequences don't diverge significantly during generation.
-        
+        Generate sequences using greedy search.
         Args:
             x: Input tensor of shape (batch_size, sequence_length)
             temperature: Temperature for logits scaling
             repeat_penalty: Penalty for repeated tokens
-            use_kv_cache: Whether to use KV caching for speedup (default: True)
         Returns:
             Tuple of tensors: (sequences, scores)
              - sequences is of shape (batch_size, sequence_length)
@@ -189,53 +171,11 @@ class SequenceGenerator:
         scores = torch.zeros(batch_size, device=x.device)
         finished = torch.zeros(batch_size, dtype=torch.bool, device=x.device)
 
-        # KV Cache: stores logits indexed by sequence hash
-        # When a batch finishes, we cache its logits to potentially reuse for other sequences
-        # Format: cache[seq_hash] = (logits, seq_tensor)
-        kv_cache = {} if use_kv_cache else None
-        cache_hits = 0
-        cache_misses = 0
-
-        for step in range(self.max_length - x.size(1)):
+        for _ in range(self.max_length - x.size(1)):
             if finished.all():
                 break
 
-            # Try to find cached results for each sequence in the batch
-            if use_kv_cache:
-                logits_list = []
-                cache_masks = []  # Track which sequences hit the cache
-                
-                for batch_idx in range(batch_size):
-                    seq_hash = self._get_seq_hash(x, batch_idx)
-                    
-                    if seq_hash in kv_cache and not finished[batch_idx]:
-                        # Cache hit: reuse logits
-                        cached_logits, _ = kv_cache[seq_hash]
-                        logits_list.append(cached_logits[batch_idx:batch_idx+1])
-                        cache_masks.append(True)
-                        cache_hits += 1
-                    else:
-                        # Mark for computation
-                        cache_masks.append(False)
-                        cache_misses += 1
-                        logits_list.append(None)
-                
-                # Compute logits for cache misses
-                if any(m is False for m in cache_masks):
-                    computed_logits = self.score_fn(x).detach()
-                    
-                    # Fill in missing logits and cache results
-                    for batch_idx in range(batch_size):
-                        if not cache_masks[batch_idx]:
-                            logits_list[batch_idx] = computed_logits[batch_idx:batch_idx+1]
-                            seq_hash = self._get_seq_hash(x, batch_idx)
-                            kv_cache[seq_hash] = (computed_logits.clone(), x.clone())
-                
-                # Concatenate all logits
-                logits = torch.cat(logits_list, dim=0)
-            else:
-                logits = self.score_fn(x)
-            
+            logits = self.score_fn(x)
             logits = self._apply_repeat_penalty(logits, x, repeat_penalty + 1e-10)
             logits = logits / temperature
             log_probs = torch.log_softmax(logits, dim=-1)
@@ -246,11 +186,6 @@ class SequenceGenerator:
             scores = torch.where(finished, scores, scores + token_scores)
             x = torch.cat([x, next_tokens.unsqueeze(1)], dim=1)
             finished = finished | (next_tokens == self.tokenizer.eos_id)
-        
-        # Log cache performance if caching was enabled
-        if use_kv_cache and (cache_hits + cache_misses) > 0:
-            cache_hit_rate = cache_hits / (cache_hits + cache_misses) * 100 if (cache_hits + cache_misses) > 0 else 0
-            print(f"[KV Cache] Hits: {cache_hits}, Misses: {cache_misses}, Hit Rate: {cache_hit_rate:.1f}%")
         
         return x, scores
 

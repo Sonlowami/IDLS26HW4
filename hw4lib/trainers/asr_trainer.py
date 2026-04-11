@@ -224,7 +224,6 @@ class ASRTrainer(BaseTrainer):
             'repeat_penalty': 1.0,
             'lm_weight': 0.0,
             'lm_model': None,
-            'use_kv_cache': True,  # Enable KV caching for faster inference
         }
         results = self.recognize(dataloader, recognition_config, config_name='val', max_length=self.text_max_len if hasattr(self, 'text_max_len') else None)
 
@@ -383,8 +382,7 @@ class ASRTrainer(BaseTrainer):
                 'temperature': 1.0,
                 'repeat_penalty': 1.0,
                 'lm_weight': 0.0,
-                'lm_model': None,
-                'use_kv_cache': True,  # Enable KV caching for speedup
+                'lm_model': None
             }
             config_name = 'greedy'
 
@@ -438,16 +436,14 @@ class ASRTrainer(BaseTrainer):
                     seqs, scores = generator.generate_greedy(
                         prompts,
                         recognition_config['temperature'],
-                        recognition_config['repeat_penalty'],
-                        use_kv_cache=recognition_config.get('use_kv_cache', True)
+                        recognition_config['repeat_penalty']
                     )
                 else:
                     # TODO: Generate sequences using greedy search
                     seqs, scores = generator.generate_greedy(
                         prompts,
                         recognition_config['temperature'],
-                        recognition_config['repeat_penalty'],
-                        use_kv_cache=recognition_config.get('use_kv_cache', True)
+                        recognition_config['repeat_penalty']
                     )
 
                 # Clean up
@@ -494,8 +490,7 @@ class ASRTrainer(BaseTrainer):
             'temperature': 1.0,
             'repeat_penalty': 1.0,
             'lm_weight': lm_weight,
-            'lm_model': lm_model,
-            'use_kv_cache': True,  # Enable KV caching for faster inference
+            'lm_model': lm_model
         }
         greedy_config = common_config.copy()
         greedy_config.update({
