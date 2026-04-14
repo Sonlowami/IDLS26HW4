@@ -220,6 +220,11 @@ class BaseTrainer(ABC):
                 for metric_name, value in split_metrics.items():
                     wandb_metrics[f'{split}/{metric_name}'] = value
             wandb_metrics['learning_rate'] = self.optimizer.param_groups[0]['lr']
+            wandb_metrics['ce_loss'] = metrics['train']['ce_loss']
+            wandb_metrics['ctc_loss'] = metrics['train']['ctc_loss']
+            wandb_metrics['cer'] = metrics['val']['cer']
+            wandb_metrics['wer'] = metrics['val']['wer']
+
             wandb.log(wandb_metrics, step=step)
         
         # Print metrics with tree structure
