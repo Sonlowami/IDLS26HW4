@@ -217,9 +217,51 @@ class SequenceGenerator:
             raise ValueError("beam_width must be >= 1")
         if self.max_length < x.size(1):
             raise ValueError("max_length must be >= input sequence length")
+        if temperature <= 0:
+            raise ValueError("temperature must be > 0")
         
-        # TODO: Implement beam search
-        raise NotImplementedError # Remove once implemented
+        x = x.to(self.device)
+        batch_size, seq_len = x.size()
+
+        # Initialize beams by repeating input; only first beam is active.
+        x = x.unsqueeze(1).expand(batch_size, beam_width, seq_len).contiguous()
+        scores = torch.full((batch_size, beam_width), float("-inf"), device=x.device)
+        scores[:, 0] = 0.0
+        finished = torch.zeros((batch_size, beam_width), dtype=torch.bool, device=x.device)
+
+        for _ in range(self.max_length - seq_len):
+            if finished.all():
+                break
+
+            flat_x = x.view(batch_size * beam_width, -1)
+            logits = self.score_fn(flat_x)
+            logits = self._apply_repeat_penalty(logits, flat_x, repeat_penalty)
+            logits = logits / temperature
+            log_probs = torch.log_softmax(logits, dim=-1)
+            log_probs = log_probs.view(batch_size, beam_width, -1)
+
+            # Keep finished beams on EOS only.
+            if finished.any():
+                log_probs = log_probs.masked_fill(finished.unsqueeze(-1), float("-inf"))
+                log_probs[finished, self.tokenizer.eos_id] = 0.0
+
+            total_scores = scores.unsqueeze(-1) + log_probs
+            total_scores = total_scores.view(batch_size, -1)
+
+            topk_scores, topk_indices = torch.topk(total_scores, beam_width, dim=-1)
+            vocab_size = log_probs.size(-1)
+            beam_indices = topk_indices // vocab_size
+            next_tokens = topk_indices % vocab_size
+
+            x = x.gather(1, beam_indices.unsqueeze(-1).expand(-1, -1, x.size(-1)))
+            x = torch.cat([x, next_tokens.unsqueeze(-1)], dim=-1)
+
+            finished = finished.gather(1, beam_indices) | (next_tokens == self.tokenizer.eos_id)
+            scores = topk_scores
+
+        scores, sort_idx = scores.sort(descending=True, dim=-1)
+        x = x.gather(1, sort_idx.unsqueeze(-1).expand(-1, -1, x.size(-1)))
+        return x, scores
 
     def generate_sample(
             self,
