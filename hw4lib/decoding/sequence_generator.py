@@ -244,7 +244,9 @@ class SequenceGenerator:
             # Keep finished beams on EOS only.
             if finished.any():
                 log_probs = log_probs.masked_fill(finished.unsqueeze(-1), float("-inf"))
-                log_probs[finished, self.tokenizer.eos_id] = 0.0
+                eos_logits = log_probs[:, :, self.tokenizer.eos_id]
+                eos_logits[finished] = 0.0
+                log_probs[:, :, self.tokenizer.eos_id] = eos_logits
 
             total_scores = scores.unsqueeze(-1) + log_probs
             total_scores = total_scores.view(batch_size, -1)
