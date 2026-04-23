@@ -233,12 +233,13 @@ class SequenceGenerator:
             if finished.all():
                 break
 
-            flat_x = x.view(batch_size * beam_width, -1)
-            logits = self.score_fn(flat_x)
-            logits = self._apply_repeat_penalty(logits, flat_x, repeat_penalty)
+            beam_logits = []
+            for beam_idx in range(beam_width):
+                beam_logits.append(self.score_fn(x[:, beam_idx, :]))
+            logits = torch.stack(beam_logits, dim=1)
+            logits = self._apply_repeat_penalty(logits, x, repeat_penalty)
             logits = logits / temperature
             log_probs = torch.log_softmax(logits, dim=-1)
-            log_probs = log_probs.view(batch_size, beam_width, -1)
 
             # Keep finished beams on EOS only.
             if finished.any():
