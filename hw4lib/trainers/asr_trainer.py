@@ -433,8 +433,9 @@ class ASRTrainer(BaseTrainer):
                 # TODO: Generate sequences
                 if recognition_config['beam_width'] > 1:
                     # Beam search helper is not implemented in this codebase, so use greedy decoding as a fallback.
-                    seqs, scores = generator.generate_greedy(
+                    seqs, scores = generator.generate_beam(
                         prompts,
+                        recognition_config['beam_width'],
                         recognition_config['temperature'],
                         recognition_config['repeat_penalty']
                     )
